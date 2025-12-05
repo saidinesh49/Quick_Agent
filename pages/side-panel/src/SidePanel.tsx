@@ -1003,6 +1003,46 @@ const SidePanel = () => {
     <div>
       <div
         className={`flex h-screen flex-col ${isDarkMode ? 'bg-slate-900' : "bg-[url('/bg.jpg')] bg-cover bg-no-repeat"} overflow-hidden border ${isDarkMode ? 'border-sky-800' : 'border-[rgb(186,230,253)]'} rounded-2xl`}>
+        <style>{`
+            :root {
+              --primary-color: #313866;
+              --secondary-color: #50409A;
+              --accent-color: #964EC2;
+              --highlight-color: #FF7BBF;
+            }
+
+            .dark-mode-bg {
+              background-color: var(--primary-color) !important;
+            }
+
+            .header {
+              border-bottom: 1px solid var(--secondary-color) !important;
+            }
+
+            .header-icon {
+              color: var(--accent-color) !important;
+            }
+
+            .header-icon:hover {
+              color: var(--highlight-color) !important;
+            }
+
+            .send-button {
+              color: var(--accent-color) !important;
+            }
+
+            .send-button:hover {
+              color: var(--highlight-color) !important;
+            }
+
+            .scrollbar-gutter-stable::-webkit-scrollbar-thumb {
+              background: var(--accent-color) !important;
+            }
+
+            .scrollbar-gutter-stable::-webkit-scrollbar-thumb:hover {
+              background: var(--highlight-color) !important;
+            }
+          `}</style>
         <header className="header relative">
           <div className="header-logo">
             {showHistory ? (
@@ -1040,13 +1080,6 @@ const SidePanel = () => {
                 </button>
               </>
             )}
-            <a
-              href="https://discord.gg/NN3ABHggMK"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`header-icon ${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-400 hover:text-sky-500'}`}>
-              <RxDiscordLogo size={20} />
-            </a>
             <button
               type="button"
               onClick={() => chrome.runtime.openOptionsPage()}
