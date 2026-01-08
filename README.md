@@ -63,7 +63,7 @@ After a successful build, a `dist/` folder will be generated.
 ## How To add Quick-Agent to your chrome.
 
 ###  Step-1: 
- - Either follow installation & setup 
+ - Either follow "installation & setup" 
  OR [click Here](https://github.com/saidinesh49/Quick_Agent/releases/download/V1.0.1/dist.zip.zip) and extract the downloaded folder.
 
 ### Step-2:
