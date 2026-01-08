@@ -80,6 +80,6 @@ After a successful build, a `dist/` folder will be generated.
 - Click **Quick-Agent** from the extensions toolbar
 - The Quick-Agent side panel will open
 - Click the **:gear: Settings** option in the side panel
-- Go to the **Model** section and paste your **Gemini API key**  
-  *(Get your API key here: https://aistudio.google.com/api-keys)*
+- Go to the **Model** section and choose any provider (for example: **Gemini**), and paste your **API key**  
+  *(Get your Gemini API key here: https://aistudio.google.com/api-keys)*
 
