@@ -66,12 +66,13 @@ After a successful build, a `dist/` folder will be generated.
  - Either follow "installation & setup" 
  OR [click Here](https://github.com/saidinesh49/Quick_Agent/releases/download/V1.0.1/dist.zip.zip) and extract the downloaded folder.
 
-### Step-2:
-1. Open Google Chrome
+### Step 2:
+1. Open **Google Chrome**
 2. Go to `chrome://extensions`
-3. Enable `Developer Mode`
-4. Click `Load unpacked`
-5. Select the `dist` folder inside the `Quick_Agent` project
+3. Enable **Developer Mode**
+4. Click **Load unpacked**
+5. Select the extracted **`dist`** folder  
+   *(or the `dist` folder inside **Quick-Agent** if you followed the installation and setup steps)*
 
 ### Step-3:
  - Now Pin the Quick Agent in extensions, for easy access.
