@@ -5,8 +5,10 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatXAI } from '@langchain/xai';
 import { ChatGroq } from '@langchain/groq';
 import { ChatCerebras } from '@langchain/cerebras';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { ChatOllama } from '@langchain/ollama';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage } from '@langchain/core/messages';
+import type { ChatResult } from '@langchain/core/outputs';
 import { ChatDeepSeek } from '@langchain/deepseek';
 
 const maxTokens = 1024 * 4;
@@ -56,6 +58,52 @@ class ChatLlama extends ChatOpenAI {
       console.error(`[ChatLlama] Error during API call:`, error);
       throw error;
     }
+  }
+}
+
+// Custom ChatOllamaGenerate class — calls /api/generate instead of /api/chat
+// Ollama's /api/generate expects { model, prompt, stream } and returns { response: "text" }
+class ChatOllamaGenerate extends BaseChatModel {
+  private ollamaBaseUrl: string;
+  private ollamaModel: string;
+
+  constructor(args: { model: string; baseUrl?: string }) {
+    super({});
+    this.ollamaBaseUrl = (args.baseUrl ?? 'http://localhost:11434').replace(/\/$/, '');
+    this.ollamaModel = args.model || 'llama3';
+  }
+
+  _llmType(): string {
+    return 'ollama-generate';
+  }
+
+  async _generate(messages: BaseMessage[]): Promise<ChatResult> {
+    // Extract the latest message content as the prompt
+    const lastMessage = messages[messages.length - 1];
+    const prompt = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
+
+    const res = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: this.ollamaModel, prompt, stream: false }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Ollama /api/generate error: ${res.status} ${res.statusText}`);
+    }
+
+    const data = (await res.json()) as { response: string };
+    const text = data.response ?? '';
+
+    return {
+      generations: [
+        {
+          text,
+          message: new AIMessage(text),
+          generationInfo: {},
+        },
+      ],
+    };
   }
 }
 
@@ -321,30 +369,11 @@ export function createChatModel(providerConfig: ProviderConfig, modelConfig: Mod
       return new ChatCerebras(args);
     }
     case ProviderTypeEnum.Ollama: {
-      const args: {
-        model: string;
-        apiKey?: string;
-        baseUrl: string;
-        modelKwargs?: { max_completion_tokens: number };
-        topP?: number;
-        temperature?: number;
-        maxTokens?: number;
-        numCtx: number;
-      } = {
-        model: modelConfig.modelName,
-        // required but ignored by ollama
-        apiKey: providerConfig.apiKey === '' ? 'ollama' : providerConfig.apiKey,
+      // Use /api/generate (not /api/chat) with a single prompt field
+      return new ChatOllamaGenerate({
+        model: modelConfig.modelName || 'llama3',
         baseUrl: providerConfig.baseUrl ?? 'http://localhost:11434',
-        topP,
-        temperature,
-        maxTokens,
-        // ollama usually has a very small context window, so we need to set a large number for agent to work
-        // It was set to 128000 in the original code, but it will cause ollama reload the models frequently if you have multiple models working together
-        // not sure why, but setting it to 64000 seems to work fine
-        // TODO: configure the context window size in model config
-        numCtx: 64000,
-      };
-      return new ChatOllama(args);
+      });
     }
     case ProviderTypeEnum.OpenRouter: {
       // Call the helper function, passing OpenRouter headers via the third argument
