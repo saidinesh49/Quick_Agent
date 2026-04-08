@@ -24,6 +24,7 @@ import { URLNotAllowedError } from '../browser/views';
 import { chatHistoryStore } from '@extension/storage/lib/chat';
 import type { AgentStepHistory } from './history';
 import type { GeneralSettingsConfig } from '@extension/storage';
+import type { UserProfile } from '@extension/storage/lib/profile/user';
 import { analytics } from '../services/analytics';
 
 const logger = createLogger('Executor');
@@ -33,6 +34,7 @@ export interface ExecutorExtraArgs {
   extractorLLM?: BaseChatModel;
   agentOptions?: Partial<AgentOptions>;
   generalSettings?: GeneralSettingsConfig;
+  userProfile?: UserProfile;
 }
 
 export class Executor {
@@ -65,7 +67,7 @@ export class Executor {
 
     this.generalSettings = extraArgs?.generalSettings;
     this.tasks.push(task);
-    this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep);
+    this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep, extraArgs?.userProfile);
     this.plannerPrompt = new PlannerPrompt();
 
     const actionBuilder = new ActionBuilder(context, extractorLLM);
@@ -154,8 +156,7 @@ export class Executor {
         }
 
         // Run planner periodically for guidance
-        if (this.planner && (context.nSteps % context.options.planningInterval === 0 || navigatorDone)) {
-          navigatorDone = false;
+        if (this.planner && context.nSteps % context.options.planningInterval === 0) {
           latestPlanOutput = await this.runPlanner();
 
           // Check if task is complete after planner run
@@ -167,9 +168,17 @@ export class Executor {
         // Execute navigator
         navigatorDone = await this.navigate();
 
-        // If navigator indicates completion, the next periodic planner run will validate it
-        if (navigatorDone) {
-          logger.info('🔄 Navigator indicates completion - will be validated by next planner run');
+        // If navigator signals done, immediately validate with planner instead of waiting for next iteration
+        if (navigatorDone && this.planner) {
+          logger.info('🔄 Navigator done — validating with planner immediately');
+          navigatorDone = false;
+          latestPlanOutput = await this.runPlanner();
+          if (this.checkTaskCompletion(latestPlanOutput)) {
+            break;
+          }
+        } else if (navigatorDone) {
+          logger.info('🔄 Navigator done (no planner) — finishing');
+          break;
         }
       }
 
