@@ -83,6 +83,8 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
   const [nameErrors, setNameErrors] = useState<Record<string, string>>({});
   // Add state for tracking API key visibility
   const [visibleApiKeys, setVisibleApiKeys] = useState<Record<string, boolean>>({});
+  // Track Ollama fetch status per provider
+  const [ollamaFetchStatus, setOllamaFetchStatus] = useState<Record<string, string>>({});
   // Create a non-async wrapper for use in render functions
   const [availableModels, setAvailableModels] = useState<
     Array<{ provider: string; providerName: string; model: string }>
@@ -262,6 +264,27 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
 
     updateAvailableModels();
   }, [getAvailableModelsCallback]); // Only depends on the callback
+
+  const handleFetchOllamaModels = async (providerId: string) => {
+    const baseUrl = (providers[providerId]?.baseUrl ?? 'http://localhost:11434').replace(/\/$/, '');
+    setOllamaFetchStatus(prev => ({ ...prev, [providerId]: 'Fetching...' }));
+    try {
+      const res = await fetch(`${baseUrl}/api/tags`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { models: { name: string }[] };
+      const names = (data.models || []).map(m => m.name).filter(Boolean);
+      if (names.length === 0) throw new Error('No models found');
+      setProviders(prev => ({
+        ...prev,
+        [providerId]: { ...prev[providerId], modelNames: names },
+      }));
+      setModifiedProviders(prev => new Set(prev).add(providerId));
+      setOllamaFetchStatus(prev => ({ ...prev, [providerId]: `Fetched ${names.length} model(s)` }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setOllamaFetchStatus(prev => ({ ...prev, [providerId]: `Failed: ${msg}` }));
+    }
+  };
 
   const handleApiKeyChange = (provider: string, apiKey: string, baseUrl?: string) => {
     setModifiedProviders(prev => new Set(prev).add(provider));
@@ -1544,6 +1567,20 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
                             {t('options_models_providers_ollama_learnMore')}
                           </a>
                         </p>
+                        <div className="mt-2 flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleFetchOllamaModels(providerId)}
+                            className={`rounded px-3 py-1 text-sm font-medium ${isDarkMode ? 'bg-blue-700 text-white hover:bg-blue-600' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                            Fetch installed models
+                          </button>
+                          {ollamaFetchStatus[providerId] && (
+                            <span
+                              className={`text-xs ${ollamaFetchStatus[providerId].startsWith('Failed') ? 'text-red-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                              {ollamaFetchStatus[providerId]}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

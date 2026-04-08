@@ -115,6 +115,13 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
       return false;
     }
 
+    // Ollama /api/generate doesn't support tool calling / bindTools.
+    // Use _llmType() — reliable even in minified builds, unlike constructor.name.
+    if (this.provider === ProviderTypeEnum.Ollama || this.chatLLM._llmType() === 'ollama-generate') {
+      logger.debug(`[${this.modelName}] Ollama doesn't support structured output, using manual JSON extraction`);
+      return false;
+    }
+
     return true;
   }
 
