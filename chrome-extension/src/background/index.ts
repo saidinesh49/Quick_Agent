@@ -7,6 +7,7 @@ import {
   llmProviderStore,
   analyticsSettingsStore,
 } from '@extension/storage';
+import { userStore } from '@extension/storage/lib/profile/user';
 import { t } from '@extension/i18n';
 import BrowserContext from './browser/context';
 import { Executor } from './agent/executor';
@@ -319,6 +320,9 @@ async function setupExecutor(taskId: string, task: string, browserContext: Brows
     displayHighlights: generalSettings.displayHighlights,
   });
 
+  const userProfile = await userStore.getProfile();
+  const profileFilled = await userStore.hasFilledProfile();
+
   const executor = new Executor(task, taskId, browserContext, navigatorLLM, {
     plannerLLM: plannerLLM ?? navigatorLLM,
     agentOptions: {
@@ -330,6 +334,7 @@ async function setupExecutor(taskId: string, task: string, browserContext: Brows
       planningInterval: generalSettings.planningInterval,
     },
     generalSettings: generalSettings,
+    userProfile: profileFilled ? userProfile : undefined,
   });
 
   return executor;
