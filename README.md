@@ -57,6 +57,15 @@ pnpm build
 ```
 After a successful build, a `dist/` folder will be generated.
 
+
+> [!IMPORTANT]  
+> if you are using **Ollama** as model, then run this below command on your local terminal after Ollama installation.
+
+```bash
+OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=chrome-extension://* ollama serve
+```
+
+
 ---
 
 
