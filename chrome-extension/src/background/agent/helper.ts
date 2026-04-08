@@ -7,7 +7,7 @@ import { ChatGroq } from '@langchain/groq';
 import { ChatCerebras } from '@langchain/cerebras';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage } from '@langchain/core/messages';
+import { AIMessage, SystemMessage, HumanMessage } from '@langchain/core/messages';
 import type { ChatResult } from '@langchain/core/outputs';
 import { ChatDeepSeek } from '@langchain/deepseek';
 
@@ -65,12 +65,13 @@ class ChatLlama extends ChatOpenAI {
 // Ollama's /api/generate expects { model, prompt, stream } and returns { response: "text" }
 class ChatOllamaGenerate extends BaseChatModel {
   private ollamaBaseUrl: string;
-  private ollamaModel: string;
+  // exposed as `model` so BaseAgent.getModelName() can read it
+  model: string;
 
   constructor(args: { model: string; baseUrl?: string }) {
     super({});
     this.ollamaBaseUrl = (args.baseUrl ?? 'http://localhost:11434').replace(/\/$/, '');
-    this.ollamaModel = args.model || 'llama3';
+    this.model = args.model || 'llama3:latest';
   }
 
   _llmType(): string {
@@ -78,14 +79,27 @@ class ChatOllamaGenerate extends BaseChatModel {
   }
 
   async _generate(messages: BaseMessage[]): Promise<ChatResult> {
-    // Extract the latest message content as the prompt
-    const lastMessage = messages[messages.length - 1];
-    const prompt = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
+    // Build a full prompt from ALL messages so the system prompt (JSON format instructions) is included.
+    // Dropping it causes llama3 to respond in plain text → JSON extraction fails → silent stall.
+    const parts: string[] = [];
+    for (const msg of messages) {
+      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+      if (msg instanceof SystemMessage) {
+        parts.push(content);
+      } else if (msg instanceof HumanMessage) {
+        parts.push(`\nUser: ${content}`);
+      } else if (msg instanceof AIMessage) {
+        parts.push(`\nAssistant: ${content}`);
+      } else {
+        parts.push(content);
+      }
+    }
+    const prompt = parts.join('\n');
 
     const res = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: this.ollamaModel, prompt, stream: false }),
+      body: JSON.stringify({ model: this.model, prompt, stream: false }),
     });
 
     if (!res.ok) {
